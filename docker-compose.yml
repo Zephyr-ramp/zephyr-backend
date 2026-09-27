@@ -1,0 +1,51 @@
+# Local stack: Postgres + zephyr-backend + zephyr-frontend.
+#
+#   cp .env.example .env && npm run keys:generate   # fill in the keys
+#   docker compose up --build
+#
+# Expects zephyr-frontend checked out next to this repo (../zephyr-frontend).
+# Open http://localhost:8080/.well-known/stellar.toml (anchor) and
+# http://localhost:3000/app (reference wallet).
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: zephyr
+      POSTGRES_PASSWORD: zephyr
+      POSTGRES_DB: zephyr
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zephyr"]
+      interval: 5s
+      retries: 10
+
+  backend:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://zephyr:zephyr@postgres:5432/zephyr
+      BASE_URL: ${BASE_URL:-http://localhost:8080}
+      FRONTEND_URL: http://frontend:3000
+      HOST: 0.0.0.0
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ../zephyr-frontend
+      args:
+        NEXT_PUBLIC_ANCHOR_URL: ${BASE_URL:-http://localhost:8080}
+        NEXT_PUBLIC_NETWORK: ${STELLAR_NETWORK:-testnet}
+        NEXT_PUBLIC_ESCROW_CONTRACT_ID: ${ESCROW_CONTRACT_ID:-}
+        NEXT_PUBLIC_SOROBAN_RPC_URL: ${SOROBAN_RPC_URL:-https://soroban-testnet.stellar.org}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
