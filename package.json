@@ -1,0 +1,69 @@
+{
+  "name": "zephyr-backend",
+  "version": "0.1.0",
+  "description": "Zephyr backend: open-source USD <-> USDC on/off-ramp anchor for the Stellar network (SEP-1, SEP-10, SEP-24)",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/server.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "keys:generate": "tsx scripts/generate-keys.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "bindings:update": "bash scripts/update-bindings.sh"
+  },
+  "keywords": [
+    "stellar",
+    "anchor",
+    "sep-24",
+    "sep-10",
+    "usdc",
+    "on-ramp",
+    "off-ramp"
+  ],
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@fastify/formbody": "^9.0.0",
+    "@fastify/http-proxy": "^11.6.3",
+    "@fastify/multipart": "^10.1.2",
+    "@fastify/rate-limit": "^11.2.0",
+    "@stellar/stellar-sdk": "^17.1.0",
+    "@zephyr-ramp/escrow-client": "file:vendor/zephyr-ramp-escrow-client-0.1.0.tgz",
+    "dotenv": "^18.0.4",
+    "drizzle-orm": "^0.45.3",
+    "fastify": "^5.12.5",
+    "jose": "^6.2.12",
+    "pg": "^8.23.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@eslint/js": "^10.0.1",
+    "@testcontainers/postgresql": "^12.1.0",
+    "@types/node": "^26.6.3",
+    "@types/pg": "^8.23.1",
+    "@vitest/coverage-v8": "^5.0.2",
+    "drizzle-kit": "^0.31.11",
+    "eslint": "^10.11.0",
+    "prettier": "^3.9.9",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.70.1",
+    "vitest": "^5.0.2",
+    "yaml": "^2.9.1"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  }
+}
