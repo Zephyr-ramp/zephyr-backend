@@ -1,0 +1,523 @@
+openapi: 3.1.0
+info:
+  title: Zephyr backend (non-SEP endpoints)
+  version: 0.1.0
+  summary: Interactive-flow API, rail webhooks, operations and sandbox endpoints.
+  description: |
+    SEP-1, SEP-10 and SEP-24 endpoints follow their Stellar specs and aren't
+    repeated here. This document covers Zephyr's own endpoints.
+
+    zephyr-frontend generates its API types from this file
+    (`npm run api:types` in that repo). Keep them in sync: the backend test
+    suite checks every path here is served.
+
+    Transaction `status` values are exactly the SEP-24 names.
+  license:
+    name: Apache-2.0
+    identifier: Apache-2.0
+servers:
+  - url: http://localhost:8080
+    description: Local development
+
+tags:
+  - name: interactive
+    description: JSON API behind the SEP-24 interactive pages served by zephyr-frontend.
+  - name: webhooks
+    description: Asynchronous updates from the fiat payment rail.
+  - name: operations
+  - name: sandbox
+    description: Only when ENABLE_SANDBOX=true (never on the public network).
+
+paths:
+  /health:
+    get:
+      tags: [operations]
+      operationId: getHealth
+      summary: Liveness probe
+      responses:
+        "200":
+          description: The process is up.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, network, rail]
+                properties:
+                  status: { const: ok }
+                  network: { enum: [testnet, public] }
+                  rail: { type: string }
+
+  /ready:
+    get:
+      tags: [operations]
+      operationId: getReady
+      summary: Readiness probe (store reachable, watcher health)
+      responses:
+        "200":
+          description: Ready for traffic.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Readiness" }
+        "503":
+          description: A dependency is unavailable.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Readiness" }
+
+  /openapi.yaml:
+    get:
+      tags: [operations]
+      operationId: getOpenApi
+      summary: This document
+      responses:
+        "200":
+          description: OpenAPI 3.1 document.
+          content:
+            application/yaml: {}
+
+  /api/interactive/{id}:
+    parameters:
+      - $ref: "#/components/parameters/TransactionId"
+      - name: token
+        in: query
+        required: false
+        description: Interactive token (alternative to the Authorization header).
+        schema: { type: string }
+    get:
+      tags: [interactive]
+      operationId: getInteractive
+      summary: Load a transaction for the interactive pages
+      description: Accepts the interactive token, or the read-only `more_info_url` token.
+      security:
+        - interactiveToken: []
+        - {}
+      responses:
+        "200":
+          description: The transaction and everything the form needs.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InteractiveView" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+    post:
+      tags: [interactive]
+      operationId: submitInteractive
+      summary: Submit the deposit/withdraw form
+      security:
+        - interactiveToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/InteractiveSubmit" }
+      responses:
+        "200":
+          description: Updated transaction.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InteractiveView" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+
+  /webhooks/rail/{provider}:
+    post:
+      tags: [webhooks]
+      operationId: railWebhook
+      summary: Rail event (signed, idempotent)
+      description: |
+        Signed with `Zephyr-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256(RAIL_WEBHOOK_SECRET, "<t>.<raw body>")>`.
+        Timestamps older than 5 minutes are rejected. Each event `id` (or
+        `Idempotency-Key` header) is processed at most once. Registered only when
+        RAIL_WEBHOOK_SECRET is set. See docs/payment-rails.md.
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          description: Must equal the configured PAYMENT_RAIL name.
+          schema: { type: string }
+        - name: Zephyr-Signature
+          in: header
+          required: true
+          schema: { type: string }
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RailEvent" }
+      responses:
+        "200":
+          description: Processed, or a duplicate.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [received, duplicate]
+                properties:
+                  received: { const: true }
+                  duplicate: { type: boolean }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+
+  /sandbox/deposits/{id}/fiat-received:
+    post:
+      tags: [sandbox]
+      operationId: sandboxFiatReceived
+      summary: Simulate the user's dollars arriving
+      parameters: [{ $ref: "#/components/parameters/TransactionId" }]
+      responses:
+        "200": { $ref: "#/components/responses/Transaction" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+
+  /sandbox/withdrawals/{id}/stellar-payment:
+    post:
+      tags: [sandbox]
+      operationId: sandboxStellarPayment
+      summary: Simulate a standard withdrawal's USDC payment arriving
+      parameters: [{ $ref: "#/components/parameters/TransactionId" }]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount: { $ref: "#/components/schemas/Amount" }
+      responses:
+        "200": { $ref: "#/components/responses/Transaction" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+
+  /sandbox/withdrawals/{id}/escrow-lock:
+    post:
+      tags: [sandbox]
+      operationId: sandboxEscrowLock
+      summary: Simulate the wallet locking USDC in the sandbox escrow
+      description: Only with the in-memory sandbox escrow (no ESCROW_CONTRACT_ID).
+      parameters: [{ $ref: "#/components/parameters/TransactionId" }]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount: { $ref: "#/components/schemas/Amount" }
+                from: { type: string }
+                timeout_ledgers: { type: integer }
+      responses:
+        "200": { $ref: "#/components/responses/Transaction" }
+        "409": { $ref: "#/components/responses/Error" }
+
+  /sandbox/withdrawals/{id}/escrow-refund:
+    post:
+      tags: [sandbox]
+      operationId: sandboxEscrowRefund
+      summary: Advance the sandbox ledger and refund an expired escrow
+      parameters: [{ $ref: "#/components/parameters/TransactionId" }]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                advance_ledgers: { type: integer }
+      responses:
+        "200": { $ref: "#/components/responses/Transaction" }
+        "409": { $ref: "#/components/responses/Error" }
+
+  /sandbox/escrow/advance:
+    post:
+      tags: [sandbox]
+      operationId: sandboxEscrowAdvance
+      summary: Advance the sandbox ledger
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ledgers: { type: integer }
+      responses:
+        "200":
+          description: New ledger.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ledger: { type: integer }
+
+  /sandbox/transactions/{id}/audit:
+    get:
+      tags: [sandbox]
+      operationId: sandboxAuditLog
+      summary: Every status transition recorded for a transaction
+      parameters: [{ $ref: "#/components/parameters/TransactionId" }]
+      responses:
+        "200":
+          description: Audit log, oldest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [audit]
+                properties:
+                  audit:
+                    type: array
+                    items: { $ref: "#/components/schemas/AuditEntry" }
+        "404": { $ref: "#/components/responses/Error" }
+
+components:
+  securitySchemes:
+    interactiveToken:
+      type: http
+      scheme: bearer
+      description: Short-lived (10 min) token from the SEP-24 interactive URL.
+
+  parameters:
+    TransactionId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+  responses:
+    Error:
+      description: Error.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Transaction:
+      description: The transaction.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [transaction]
+            properties:
+              transaction: { $ref: "#/components/schemas/Transaction" }
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+
+    Amount:
+      type: string
+      description: Decimal string with up to 7 decimal places. Never a float.
+      pattern: "^\\d+(\\.\\d{1,7})?$"
+      examples: ["100.00"]
+
+    TransactionStatus:
+      type: string
+      description: SEP-24 transaction status.
+      enum:
+        - incomplete
+        - pending_user_transfer_start
+        - pending_user_transfer_complete
+        - pending_external
+        - pending_anchor
+        - pending_stellar
+        - pending_trust
+        - pending_user
+        - completed
+        - refunded
+        - expired
+        - no_market
+        - too_small
+        - too_large
+        - error
+
+    Refunds:
+      type: object
+      required: [amount_refunded, amount_fee, payments]
+      properties:
+        amount_refunded: { $ref: "#/components/schemas/Amount" }
+        amount_fee: { $ref: "#/components/schemas/Amount" }
+        payments:
+          type: array
+          items:
+            type: object
+            required: [id, id_type, amount, fee]
+            properties:
+              id: { type: string }
+              id_type: { enum: [stellar, external] }
+              amount: { $ref: "#/components/schemas/Amount" }
+              fee: { $ref: "#/components/schemas/Amount" }
+
+    EscrowDetails:
+      type: object
+      description: Zephyr extension on escrow withdrawals.
+      required: [contract_id, tx_id, amount, timeout_ledgers]
+      properties:
+        contract_id: { type: string }
+        tx_id:
+          type: string
+          description: Hex sha256 of the transaction id; the escrow's `tx_id`.
+          pattern: "^[0-9a-f]{64}$"
+        amount: { oneOf: [{ $ref: "#/components/schemas/Amount" }, { type: "null" }] }
+        timeout_ledgers: { type: integer }
+        expires_ledger: { type: [integer, "null"] }
+        lock_tx_hash: { type: [string, "null"] }
+        claim_tx_hash: { type: [string, "null"] }
+        refund_tx_hash: { type: [string, "null"] }
+
+    Transaction:
+      type: object
+      description: SEP-24 transaction object, plus Zephyr's escrow extension.
+      required: [id, kind, status, more_info_url, started_at, refunded]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { enum: [deposit, withdrawal] }
+        status: { $ref: "#/components/schemas/TransactionStatus" }
+        more_info_url: { type: string, format: uri }
+        amount_in: { oneOf: [{ $ref: "#/components/schemas/Amount" }, { type: "null" }] }
+        amount_out: { oneOf: [{ $ref: "#/components/schemas/Amount" }, { type: "null" }] }
+        amount_fee: { oneOf: [{ $ref: "#/components/schemas/Amount" }, { type: "null" }] }
+        amount_in_asset: { type: string }
+        amount_out_asset: { type: string }
+        started_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        completed_at: { type: [string, "null"], format: date-time }
+        stellar_transaction_id: { type: [string, "null"] }
+        external_transaction_id: { type: [string, "null"] }
+        message: { type: [string, "null"] }
+        refunded: { type: boolean }
+        refunds: { $ref: "#/components/schemas/Refunds" }
+        to: { type: [string, "null"] }
+        deposit_memo: { type: [string, "null"] }
+        deposit_memo_type: { type: [string, "null"] }
+        from: { type: [string, "null"] }
+        withdraw_anchor_account: { type: [string, "null"] }
+        withdraw_memo: { type: [string, "null"] }
+        withdraw_memo_type: { type: [string, "null"] }
+        withdraw_mode: { enum: [standard, escrow] }
+        escrow: { $ref: "#/components/schemas/EscrowDetails" }
+
+    InteractiveView:
+      type: object
+      required: [transaction, editable, lang, asset, limits, fee, deposit_instructions, escrow]
+      properties:
+        transaction: { $ref: "#/components/schemas/Transaction" }
+        editable:
+          type: boolean
+          description: True while the form can still be submitted.
+        lang: { type: string, examples: [en] }
+        asset:
+          type: object
+          required: [code, issuer]
+          properties:
+            code: { type: string }
+            issuer: { type: string }
+        limits:
+          type: object
+          required: [min, max]
+          properties:
+            min: { $ref: "#/components/schemas/Amount" }
+            max: { $ref: "#/components/schemas/Amount" }
+        fee:
+          type: object
+          description: "fee = fixed + amount * percent / 100, rounded half-up to cents."
+          required: [fixed, percent]
+          properties:
+            fixed: { $ref: "#/components/schemas/Amount" }
+            percent: { type: string, examples: ["1"] }
+        deposit_instructions:
+          type: [object, "null"]
+          additionalProperties: { type: string }
+        escrow:
+          oneOf:
+            - type: object
+              required: [enabled]
+              properties:
+                enabled: { const: false }
+            - type: object
+              required: [enabled, contract_id, timeout_ledgers, network_passphrase, soroban_rpc_url]
+              properties:
+                enabled: { const: true }
+                contract_id: { type: [string, "null"] }
+                timeout_ledgers: { type: integer }
+                network_passphrase: { type: string }
+                soroban_rpc_url: { type: string, format: uri }
+
+    InteractiveSubmit:
+      type: object
+      required: [amount, name, email]
+      properties:
+        amount: { $ref: "#/components/schemas/Amount" }
+        name: { type: string, minLength: 1 }
+        email: { type: string, format: email }
+        withdraw_mode: { enum: [standard, escrow] }
+
+    RailEvent:
+      oneOf:
+        - type: object
+          required: [id, type, data]
+          properties:
+            id: { type: string }
+            type: { const: deposit.received }
+            data:
+              type: object
+              required: [transaction_id, amount]
+              properties:
+                transaction_id: { type: string }
+                amount: { $ref: "#/components/schemas/Amount" }
+                external_id: { type: string }
+        - type: object
+          required: [id, type, data]
+          properties:
+            id: { type: string }
+            type: { const: payout.completed }
+            data:
+              type: object
+              required: [transaction_id]
+              properties:
+                transaction_id: { type: string }
+                external_id: { type: string }
+        - type: object
+          required: [id, type, data]
+          properties:
+            id: { type: string }
+            type: { const: payout.failed }
+            data:
+              type: object
+              required: [transaction_id]
+              properties:
+                transaction_id: { type: string }
+                reason: { type: string }
+
+    Readiness:
+      type: object
+      required: [status, checks]
+      properties:
+        status: { enum: [ready, not_ready] }
+        checks:
+          type: object
+          additionalProperties: { type: string }
+
+    AuditEntry:
+      type: object
+      required: [transactionId, fromStatus, toStatus, actor, at]
+      properties:
+        transactionId: { type: string }
+        fromStatus:
+          oneOf: [{ $ref: "#/components/schemas/TransactionStatus" }, { type: "null" }]
+        toStatus: { $ref: "#/components/schemas/TransactionStatus" }
+        actor: { type: string }
+        note: { type: string }
+        at: { type: string, format: date-time }
