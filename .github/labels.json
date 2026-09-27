@@ -1,0 +1,14 @@
+[
+  { "name": "good first issue", "color": "7057ff", "description": "Good for newcomers" },
+  { "name": "help wanted", "color": "008672", "description": "Open for contributors; wait to be assigned" },
+  { "name": "complexity: trivial", "color": "c2e0c6", "description": "Drips Wave: 100 points" },
+  { "name": "complexity: medium", "color": "fbca04", "description": "Drips Wave: 150 points" },
+  { "name": "complexity: high", "color": "d93f0b", "description": "Drips Wave: 200 points" },
+  { "name": "area: sep10", "color": "1d76db", "description": "SEP-10 web authentication" },
+  { "name": "area: sep24", "color": "1d76db", "description": "SEP-24 interactive deposit/withdraw" },
+  { "name": "area: escrow", "color": "5319e7", "description": "Soroban withdrawal escrow" },
+  { "name": "area: ui", "color": "bfdadc", "description": "User interface" },
+  { "name": "docs", "color": "0075ca", "description": "Documentation" },
+  { "name": "bug", "color": "d73a4a", "description": "Something isn't working" },
+  { "name": "enhancement", "color": "a2eeef", "description": "New feature or request" }
+]

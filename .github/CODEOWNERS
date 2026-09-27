@@ -1,0 +1,6 @@
+*                        @zephyr-ramp/maintainers
+/src/sep10/              @zephyr-ramp/security-reviewers
+/src/escrow/             @zephyr-ramp/security-reviewers
+/src/webhooks/           @zephyr-ramp/security-reviewers
+/src/lib/                @zephyr-ramp/security-reviewers
+/drizzle/                @zephyr-ramp/maintainers

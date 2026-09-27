@@ -1,0 +1,46 @@
+name: Task
+description: A scoped piece of work for contributors (Drips Wave ready)
+labels: ["help wanted"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Tasks are sized so one contributor can finish them in one PR within a one-week Wave.
+        **Please wait to be assigned before starting.**
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Why this matters and where it fits in the ramp.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Concrete steps and the files likely involved.
+      placeholder: |
+        Files: `src/sep24/service.ts`, `test/...`
+        1. ...
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      placeholder: |
+        - [ ] ...
+        - [ ] `npm test` passes and new behaviour is covered
+        - [ ] `npm run lint` and `npm run typecheck` are clean
+    validations:
+      required: true
+  - type: dropdown
+    id: complexity
+    attributes:
+      label: Complexity
+      options:
+        - "Trivial (100 points)"
+        - "Medium (150 points)"
+        - "High (200 points)"
+    validations:
+      required: true

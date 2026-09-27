@@ -1,0 +1,33 @@
+name: Bug report
+description: Something isn't working. For security issues, see SECURITY.md instead.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Do not report vulnerabilities here.** Anything that could steal or misroute funds, bypass auth or leak data
+        goes through a private report: see [SECURITY.md](../blob/main/SECURITY.md).
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: A failing test is the best reproduction.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Commit and network
+      placeholder: "e.g. 3f2a1bc, testnet"
