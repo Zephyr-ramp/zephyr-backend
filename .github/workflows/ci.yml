@@ -9,8 +9,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        node: [20, 22]
+        node: [20, 22, 24]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -24,6 +25,9 @@ jobs:
       # Includes the Postgres store tests: PGlite always, plus a real Postgres
       # container via testcontainers (Docker is available on ubuntu runners).
       - run: npm run test:coverage
+        env:
+          # testcontainers' HTTP client needs Node 22+; PGlite still covers the store on Node 20.
+          SKIP_DOCKER_TESTS: ${{ matrix.node == 20 && 'true' || 'false' }}
       - run: npm run build
 
   docker:
