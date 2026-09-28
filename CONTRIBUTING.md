@@ -67,6 +67,15 @@ Points are awarded when your PR is merged and the issue is resolved **during an 
 - **Schema changes** come with a generated migration. Never edit a committed migration.
 - Escape user input in any HTML you render.
 
+## Maintainers
+
+| Maintainer | GitHub                               |
+| ---------- | ------------------------------------ |
+| N-thnI     | [@N-thnI](https://github.com/N-thnI) |
+| nixx       | [@N-i-xx](https://github.com/N-i-xx) |
+
+Maintainers assign issues, review PRs (see `.github/CODEOWNERS`) and handle security and conduct reports sent to [niheanyi404@gmail.com](mailto:niheanyi404@gmail.com).
+
 ## Security
 
 Never report vulnerabilities in public issues. See [SECURITY.md](SECURITY.md).

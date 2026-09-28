@@ -11,7 +11,7 @@ Zephyr moves money. We take reports seriously and will work with you to fix and 
 Report privately through either channel:
 
 1. **GitHub Security Advisories (preferred):** [open a private advisory](https://github.com/zephyr-ramp/zephyr-backend/security/advisories/new).
-2. **Email:** the security contact listed on the [zephyr-ramp organization profile](https://github.com/zephyr-ramp).
+2. **Email:** [niheanyi404@gmail.com](mailto:niheanyi404@gmail.com), with a subject starting `[SECURITY]`.
 
 Please include the affected endpoint or module, the commit, what an attacker could do (for example get paid twice, bypass SEP-10, forge a webhook, or read someone else's transaction), and a reproduction, ideally a failing test.
 
